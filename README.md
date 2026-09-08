@@ -11,6 +11,13 @@ worked on my machine — adjust only if yours differs.
 - WSL2 running Ubuntu; project lives in the WSL filesystem at `~/Inference-serving`
 - Model: `Qwen/Qwen2.5-3B-Instruct-AWQ` (4-bit), served with vLLM
 
+### Repo layout
+
+| Folder | Focus |
+|---|---|
+| `01 memory wall/` | Roofline ceiling + quick decode smoke test |
+| `02 measure what matters/` | TTFT / latency / throughput baseline harness + Day-2 results |
+
 ---
 
 ## Step 0 — Put the laptop in Performance mode *first*
@@ -124,17 +131,63 @@ ss -ltnp | grep 8000                      # a line here means it's up
 
 ## Step 6 — Smoke test: confirm generation + measure decode speed
 
-From the repo root, run the script in `memory wall/smoke_test.py`:
+From the repo root, run the script in `01 memory wall/smoke_test.py`:
 
 ```bash
 source ~/.venv/vllm/bin/activate
-python "memory wall/smoke_test.py"
+python "01 memory wall/smoke_test.py"
 # -> 121 tokens in 1.05s -> 115.6 tok/s (measured 4-bit decode)
 ```
 
 115.6 tok/s ≈ 65% of the ~177 tok/s roofline for this card — healthy for a single
 unbatched stream. If it comes out far lower (~20%), suspect throttling: recheck
 Step 0 (Performance mode, power cap under load with `watch -n 1 nvidia-smi`).
+
+---
+
+## Day 2 — Baseline (measure what matters)
+
+Recorded against the same serve config as above (4-bit AWQ, RTX 3060 Laptop,
+Performance mode). Harness: `02 measure what matters/day1_baseline_benchmark.py`.
+Raw numbers: `results_day2_baseline.json`, VRAM samples: `vram_day2.log`.
+
+| Metric | Value |
+|---|---|
+| Median TTFT | 0.019 s (19 ms) |
+| p95 TTFT | 0.033 s (33 ms) |
+| Median end-to-end latency | 1.015 s |
+| Throughput @ concurrency 1 | 118.8 tok/s |
+| Peak VRAM | 5961 MiB (~5.8 GB) |
+
+Config: `Qwen2.5-3B-Instruct-AWQ` (4-bit), RTX 3060 Laptop 6 GB, WSL2, vLLM,
+Performance mode.
+
+I report the p95 alongside the median because a production SLA is written on
+the tail (p95 or p99) — the worst cases real users hit — and not the mean,
+which a few outliers can quietly distort. The median gives the typical case
+for serving; the p95 guards the promise.
+
+At 118.8 tok/s the single-stream decode throughput is **67% of the Day-1
+~177 tok/s roofline**, which is within the healthy range for a single
+unbatched stream.
+
+Peak VRAM sits at 5961 of 6144 MiB not because the model is large (the 4-bit
+weights are only ~2.2 GB) but because `--gpu-memory-utilization 0.80` tells
+vLLM to pre-reserve ~80% of the card for the KV cache at startup — so this
+figure is the ceiling I set, not the model's live footprint.
+
+Re-run the concurrency-1 baseline (with the server already up):
+
+```bash
+source ~/.venv/vllm/bin/activate
+python "02 measure what matters/day1_baseline_benchmark.py" \
+  --base-url http://localhost:8000/v1 \
+  --model Qwen/Qwen2.5-3B-Instruct-AWQ \
+  --concurrency 1 \
+  --max-tokens 128 \
+  --requests 20 \
+  --out "02 measure what matters/results_day2_baseline.json"
+```
 
 ---
 

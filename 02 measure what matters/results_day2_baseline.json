@@ -1,0 +1,19 @@
+{
+  "model": "Qwen/Qwen2.5-3B-Instruct-AWQ",
+  "base_url": "http://localhost:8000/v1",
+  "max_tokens": 128,
+  "requests_per_level": 20,
+  "runs": [
+    {
+      "concurrency": 1,
+      "requests": 20,
+      "ok": 20,
+      "wall_s": 18.527,
+      "throughput_tok_s": 118.8,
+      "median_ttft_s": 0.019,
+      "p95_ttft_s": 0.033,
+      "median_latency_s": 1.015,
+      "total_out_tokens": 2201
+    }
+  ]
+}
