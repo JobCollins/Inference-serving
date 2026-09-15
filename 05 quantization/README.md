@@ -49,3 +49,34 @@ Aggregate scores usually hold. Specific, rarer behaviours can still shift — ho
 the model refuses unsafe requests, edge cases, fairness across groups. That
 unevenness is the hook for later eval days: predict refusal consistency / group
 fairness may move even when aggregate accuracy barely does.
+
+---
+
+## Day 6 — FP16 vs 4-bit before/after
+
+Same model family, different precision and hardware: FP16 on a Colab **T4**,
+4-bit AWQ on the laptop **3060**. Cross-GPU throughput is **illustrative**, not
+a controlled like-for-like benchmark — the weight-size comparison is the clean
+before/after.
+
+### FP16 baseline (`colab_fp16_benchmark.py`)
+
+Colab notebook twin: `colab_fp16_benchmark.ipynb`. Results:
+`results_fp16_t4.json`.
+
+| Config | Weights (approx.) | Batched tok/s | Notes |
+|---|---|---|---|
+| FP16 (T4) | **~5.8 GB** | **479.7** | full-precision serve |
+| AWQ 4-bit (3060) | **~2.2 GB** | 116.2 @ c=1 / 1968 @ peak (Day 3) | laptop path |
+
+Weight footprint shrinks **~2.6×** (5.8 → 2.2 GB). That is what makes the 3B
+model fit a 6 GB card with KV headroom.
+
+```bash
+# print the before/after table (needs Day-3 sweep JSON next door)
+python comparison_table.py
+```
+
+Do not read the tok/s columns as “4-bit is slower/faster than FP16” — different
+GPUs, different batching setups. Use them as order-of-magnitude context; use the
+GB column for the quantization claim.
