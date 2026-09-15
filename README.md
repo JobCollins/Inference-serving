@@ -19,6 +19,7 @@ worked on my machine — adjust only if yours differs.
 | `02 measure what matters/` | TTFT / latency / throughput baseline harness + Day-2 results |
 | `03 continuous batching/` | Concurrency sweep, knee table/plot + Day-3 results |
 | `04 kv cache paging/` | KV sizing, PagedAttention, prefix-cache experiment — see folder README |
+| `05 quantization/` | 4-bit AWQ measure vs roofline — see folder README |
 
 ---
 
